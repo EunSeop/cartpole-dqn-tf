@@ -71,6 +71,7 @@ class DQNAgent:
     def train_from_memory(self):
         x_stack = np.empty(0).reshape(0, self.state_space[0])
         y_stack = np.empty(0).reshape(0, self.action_space)
+        # change for to np array
         for state, action, reward, next_state, done in self.get_train_batch(TRAIN_BATCH_SIZE):
             Q = self.predict(state)
             if done:
@@ -170,5 +171,6 @@ if __name__ == '__main__':
         os.mkdir(image_folder_path)
     env = Env()
     for i in range(10):
+        test_image_name = 'test_{}.gif'.format(i)
         env.run(100)
-        env.test(os.path.join(image_folder_path, 'test_'+str(i)+'.gif'), n=10)
+        env.test(os.path.join(image_folder_path, test_image_name), n=10)
