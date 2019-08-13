@@ -69,19 +69,18 @@ class DQNAgent:
         self.target_model.set_weights(self.model.get_weights())
 
     def train_from_memory(self):
-        x_stack = np.empty(0).reshape(0, self.state_space[0])
-        y_stack = np.empty(0).reshape(0, self.action_space)
-        # change for to np array
-        for state, action, reward, next_state, done in self.get_train_batch(TRAIN_BATCH_SIZE):
-            Q = self.predict(state)
-            if done:
-                Q[0, action] = reward
-            else:
-                Q[0, action] = reward + self.discount*np.max(self.predict(next_state, target_model=True))
-            x_stack = np.vstack([x_stack, state])
-            y_stack = np.vstack([y_stack, Q])
-        self.model.fit(x_stack, y_stack, verbose=0)
-
+        STATE, ACTION, REWARD, NEXT_STATE, DONE = 0, 1, 2, 3, 4
+        transitions = np.array(self.get_train_batch(TRAIN_BATCH_SIZE))
+        states = np.array(transitions[:, STATE].tolist())
+        Q = self.model.predict(states)
+        unique_actions = np.unique(transitions[:, ACTION])
+        for action in unique_actions:
+            mask = transitions[:, ACTION] == action
+            Q[mask, action] = transitions[mask, REWARD]
+            ndone_mask = (~transitions[:, DONE] & mask).astype(bool)
+            if len(ndone_mask) > 0:
+                Q[ndone_mask, action] += self.discount*np.max(self.target_model.predict(np.array(transitions[ndone_mask, NEXT_STATE].tolist())), axis=1)
+        self.model.fit(states, Q, verbose=0)
 
 class Env:
     def __init__(self, ):
@@ -112,7 +111,7 @@ class Env:
                 next_state, reward, done, _ = self.env.step(action)
                 episode_action_count += 1
                 reward = self.get_reward(episode_action_count, done)
-                self.model.update_memory((state.tolist(), action, reward, next_state, done))
+                self.model.update_memory((state.tolist(), action, reward, next_state.tolist(), done))
                 self.model.train_from_memory()
                 state = next_state
             total_action_counts.append(episode_action_count)
